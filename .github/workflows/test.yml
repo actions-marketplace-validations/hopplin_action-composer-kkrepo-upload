@@ -2,8 +2,10 @@ name: Verify kkRepo upload action
 
 on:
   push:
+    branches: ['**']
   pull_request:
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
@@ -13,6 +15,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Verify release automation without publishing
+        run: python3 tests/test_release.py
       - name: Build the actual action image
         run: docker build --tag composer-kkrepo-action:test .
       - name: Lint shell entrypoint

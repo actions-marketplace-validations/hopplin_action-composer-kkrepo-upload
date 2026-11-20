@@ -27,10 +27,63 @@ The original Nexus action is a separate project and is not modified.
 
 ### Before using it from other repositories
 
-Publish this project to `hopplin/action-composer-kkrepo-upload` and create a release
-tag such as `v1`. **The examples below require that repository and tag to exist.**
-For reproducible workflows, pin the action to the full commit SHA of your release.
-This local project does not publish a repository or create remote tags automatically.
+Publish this project to `hopplin/action-composer-kkrepo-upload`, then push a full
+version tag such as `v1.0.0`. The release workflow runs verification, creates the
+GitHub release and maintains the corresponding `v1` alias automatically. **The
+examples below require that repository and a successful release workflow.** For
+reproducible workflows, pin the action to the full commit SHA of your release.
+
+## Automatic releases
+
+Commit and push the release workflow before tagging the commit you want to release.
+When the tests on `main` pass, create and push a new, annotated version tag:
+
+```bash
+git switch main
+git pull --ff-only
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+```
+
+The tag's commit must contain `.github/workflows/release.yml`. Pushing a tag on a
+commit from before that workflow was added cannot trigger it. Use an unused
+version number; published fixed-version tags must not be moved.
+
+For each stable tag in the form `vMAJOR.MINOR.PATCH`, the workflow:
+
+1. Builds the action image and runs the shared verification workflow against the
+   tagged commit, including the upload and release-automation integration tests.
+2. Creates a GitHub release for that existing tag, with generated release notes.
+3. Creates or advances the lightweight major tag, e.g. `v1`, to the highest
+   **published stable** release within that major version.
+
+Use `@v1.0.0` for the fixed version or `@v1` to receive compatible releases. No
+separate release is created for `v1`. Backfilled older releases do not roll `v1`
+backward or replace a newer release's GitHub **Latest** designation. Unpublished
+tags do not advance the major alias. Different major versions have separate aliases.
+
+The workflow accepts stable versions only, without leading zeros, prerelease
+suffixes or build suffixes. Examples: `v1.0.0`, `v1.0.1`, `v2.0.0`. A matching but
+invalid tag fails validation rather than publishing. A bare `v1` push does not
+trigger the release workflow.
+
+Only the release job receives `contents: write`; verification runs read-only. The
+normal `GITHUB_TOKEN` is sufficient: no personal access token or registry password
+is required. Repository/organization policies must allow that permission and
+creation/update of major tags. Tag protection may require an exemption for the
+release workflow. Do not create GitHub releases for movable tags such as `v1`,
+especially when immutable releases are enabled.
+
+Publication jobs are serialized. If publication is interrupted, rerun the failed
+workflow in GitHub Actions. An already published release is reused without
+creating a duplicate; the major alias is repaired if needed. Existing drafts or
+prereleases using the same stable tag must be resolved manually before rerunning.
+The major-tag update uses a lease so a concurrent manual change is not blindly
+overwritten.
+
+No Docker registry push or Marketplace publication is needed. Consuming workflows
+build the image directly from the versioned Dockerfile. Local verification never
+publishes a real GitHub release.
 
 ## Quick start
 
@@ -254,12 +307,15 @@ files may still affect when consuming projects see a published version.
 Requirements: PHP 8.3+ with `curl`, `zip` and `proc_open`, or Docker. Tests use an
 ephemeral loopback HTTP server and temporary fixtures. No credentials or real
 kkRepo installation are needed; no external package is published by the tests.
+Release automation tests additionally require Python 3 and Git; they replace the
+GitHub CLI with a fixture and push only to temporary local Git repositories.
 
 ```bash
 php -l src/Upload.php
 php -l kkrepo-upload.php
 sh -n entrypoint.sh
 php tests/run.php
+python3 tests/test_release.py
 ```
 
 Run the same integration suite using the actual Docker runtime:
@@ -277,8 +333,9 @@ The suite checks actual multipart uploads, ZIP content and version rewriting,
 legacy/new exclusions, source preservation, tag/branch versions, development
 metadata, output values, HTTP errors, transient GET retries, corrupt downloads,
 missing versions, redirect rejection, credential redaction and workspace escapes.
-The included GitHub workflow builds the image and runs these checks on pushes,
-pull requests and manual runs.
+The shared GitHub workflow builds the image and runs these checks on branch
+pushes, pull requests, manual runs and calls from the release workflow. Version
+tag pushes are verified through the release workflow, avoiding duplicate test runs.
 
 ## License
 

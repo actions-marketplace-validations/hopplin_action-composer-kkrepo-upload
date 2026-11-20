@@ -4,3 +4,5 @@ vendor/
 *.zip
 auth.json
 .env.local
+__pycache__/
+*.pyc
