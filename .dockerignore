@@ -1,0 +1,6 @@
+*
+!Dockerfile
+!entrypoint.sh
+!kkrepo-upload.php
+!src/
+!src/**

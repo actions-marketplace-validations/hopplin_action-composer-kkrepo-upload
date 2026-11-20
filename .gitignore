@@ -1,0 +1,6 @@
+.idea/
+.DS_Store
+vendor/
+*.zip
+auth.json
+.env.local

@@ -1,0 +1,38 @@
+name: Verify kkRepo upload action
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the actual action image
+        run: docker build --tag composer-kkrepo-action:test .
+      - name: Lint shell entrypoint
+        run: sh -n entrypoint.sh
+      - name: Lint PHP in the action runtime
+        run: |
+          docker run --rm --network none --entrypoint sh \
+            --mount "type=bind,source=$PWD,target=/tests,readonly" \
+            composer-kkrepo-action:test -ec \
+            'find /app /tests/tests -name "*.php" -print0 | xargs -0 -n 1 php -l'
+      - name: Run real HTTP multipart integration tests in the action runtime
+        run: |
+          docker run --rm --network none --entrypoint php \
+            --env KKREPO_TEST_ENTRYPOINT=/entrypoint.sh \
+            --mount "type=bind,source=$PWD,target=/tests,readonly" \
+            --workdir /tests \
+            composer-kkrepo-action:test tests/run.php
+      - name: Verify action entrypoint rejects missing credentials
+        run: |
+          if docker run --rm --network none composer-kkrepo-action:test; then
+            echo 'Action unexpectedly succeeded without configuration.' >&2
+            exit 1
+          fi

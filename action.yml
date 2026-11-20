@@ -1,0 +1,65 @@
+name: Publish Composer package to kkRepo
+description: Upload a Composer ZIP to a hosted kkRepo repository and verify metadata and downloaded bytes.
+branding:
+  icon: upload
+  color: green
+inputs:
+  repository:
+    description: 'Hosted repository URL, e.g. https://nexus.example.org/repository/my-packages/'
+    required: true
+  username:
+    description: kkRepo username with upload and read permissions
+    required: true
+  password:
+    description: kkRepo password
+    required: true
+  version:
+    description: 'Exact Composer version; defaults to the pushed tag or dev-BRANCH'
+    required: false
+    default: ''
+  package-path:
+    description: Package directory relative to the checked-out repository
+    required: false
+    default: ''
+  ignore:
+    description: Additional exclusion patterns, one glob or PHP regular expression per line
+    required: false
+    default: ''
+  github-token:
+    description: Compatibility input; not used by the uploader
+    required: false
+    default: ''
+  github-event-name:
+    description: Event used for automatic version detection
+    required: false
+    default: ${{ github.event_name }}
+  github-ref-type:
+    description: Ref type used for automatic version detection
+    required: false
+    default: ${{ github.ref_type }}
+  github-ref-name:
+    description: Ref name used for automatic version detection
+    required: false
+    default: ${{ github.ref_name }}
+outputs:
+  package-name:
+    description: Published Composer package name
+  version:
+    description: Exact published version
+  archive-sha256:
+    description: SHA-256 of the uploaded and verified archive
+  dist-url:
+    description: Verified archive download URL from kkRepo metadata
+runs:
+  using: docker
+  image: Dockerfile
+  env:
+    KKREPO_REPOSITORY: ${{ inputs.repository }}
+    KKREPO_USERNAME: ${{ inputs.username }}
+    KKREPO_PASSWORD: ${{ inputs.password }}
+    VERSION: ${{ inputs.version }}
+    PACKAGE_PATH: ${{ inputs.package-path }}
+    KKREPO_IGNORE: ${{ inputs.ignore }}
+    UPLOAD_EVENT_NAME: ${{ inputs.github-event-name }}
+    UPLOAD_REF_TYPE: ${{ inputs.github-ref-type }}
+    UPLOAD_REF_NAME: ${{ inputs.github-ref-name }}
